@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { AIService } from '@/lib/ai';
+import { EvolutionClient } from '@/lib/evolution';
 
 export async function POST(req: NextRequest) {
   try {
@@ -15,7 +17,7 @@ export async function POST(req: NextRequest) {
       const key = msgData?.key;
       const fromMe = key?.fromMe || false;
       const remoteJid = key?.remoteJid || '';
-      
+
       // Clean phone number from remoteJid (e.g. 5511999999999@s.whatsapp.net -> +5511999999999)
       const cleanPhone = remoteJid.replace('@s.whatsapp.net', '').replace('@g.us', '');
       const formattedPhone = cleanPhone.startsWith('+') ? cleanPhone : `+${cleanPhone}`;
@@ -80,7 +82,7 @@ export async function POST(req: NextRequest) {
             });
           }
 
-          // Create Inbox Message
+          // Create Contact Inbox Message
           await prisma.inboxMessage.create({
             data: {
               conversationId: conversation.id,
@@ -91,6 +93,60 @@ export async function POST(req: NextRequest) {
               status: 'DELIVERED',
             },
           });
+
+          // Check if AI Auto-Reply is enabled
+          const waAccount = await prisma.whatsAppAccount.findFirst({
+            where: { companyId: company.id },
+          });
+
+          const autoReplyEnabled = waAccount?.isDefault ?? false;
+
+          if (autoReplyEnabled) {
+            console.log(`[AI Agent] Triggering Auto-Reply for ${formattedPhone}...`);
+
+            // Initialize AI Service
+            const aiService = new AIService({
+              provider: 'OPENROUTER',
+              apiKey: waAccount?.verifyToken || '',
+              model: waAccount?.qualityRating || 'anthropic/claude-3.5-sonnet',
+              systemPrompt:
+                waAccount?.displayPhone ||
+                'Você é o assistente virtual da empresa. Responda as dúvidas do cliente no WhatsApp.',
+            });
+
+            // Generate AI Response
+            const aiResult = await aiService.generateResponse(textMessage, []);
+
+            if (aiResult.success && aiResult.text) {
+              // Send AI Response back to WhatsApp via Evolution API
+              const evoClient = new EvolutionClient({
+                serverUrl: waAccount?.wabaId || 'http://localhost:8080',
+                instanceName: waAccount?.phoneNumberId || 'zendify_instancia_1',
+                apiKey: waAccount?.accessToken || '',
+              });
+
+              await evoClient.sendTextMessage(formattedPhone, aiResult.text);
+
+              // Record AI Bot response in Inbox
+              await prisma.inboxMessage.create({
+                data: {
+                  conversationId: conversation.id,
+                  sender: 'BOT',
+                  senderName: 'Agente IA OpenRouter',
+                  text: aiResult.text,
+                  status: 'DELIVERED',
+                },
+              });
+
+              await prisma.conversation.update({
+                where: { id: conversation.id },
+                data: {
+                  lastMessage: aiResult.text,
+                  lastMessageAt: new Date(),
+                },
+              });
+            }
+          }
         }
       }
     }

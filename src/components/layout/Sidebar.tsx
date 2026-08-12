@@ -22,10 +22,12 @@ import {
   CheckCircle2,
   AlertCircle,
   Building2,
+  Bot,
 } from 'lucide-react';
 
 const menuItems = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+  { name: 'Agente IA & OpenRouter', href: '/ai', icon: Bot, badge: 'NOVO' },
   { name: 'Contatos', href: '/contacts', icon: Users },
   { name: 'Listas & Segmentos', href: '/segments', icon: Layers },
   { name: 'Campanhas', href: '/campaigns', icon: Send },
