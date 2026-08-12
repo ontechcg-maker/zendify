@@ -4,8 +4,12 @@ import { CampaignQueueProcessor } from '@/lib/queue';
 
 export async function GET() {
   try {
-    const company = await prisma.company.findFirst({ where: { slug: 'acme-corp' } });
-    if (!company) return NextResponse.json({ error: 'Empresa não encontrada' }, { status: 404 });
+    let company = await prisma.company.findFirst();
+    if (!company) {
+      company = await prisma.company.create({
+        data: { name: 'Acme Corp', slug: 'acme-corp' },
+      });
+    }
 
     const campaigns = await prisma.campaign.findMany({
       where: { companyId: company.id },
@@ -33,17 +37,22 @@ export async function POST(req: NextRequest) {
       messageText,
       mediaType,
       mediaUrl,
+      buttonsJson,
       scheduledFor,
       sendNow,
       batchRatePerMin,
     } = body;
 
-    if (!name || (!segmentId && !body.allContacts)) {
-      return NextResponse.json({ error: 'Nome e Público-alvo / Segmento são obrigatórios' }, { status: 400 });
+    if (!name) {
+      return NextResponse.json({ error: 'Nome da campanha é obrigatório' }, { status: 400 });
     }
 
-    const company = await prisma.company.findFirst({ where: { slug: 'acme-corp' } });
-    if (!company) return NextResponse.json({ error: 'Empresa não encontrada' }, { status: 404 });
+    let company = await prisma.company.findFirst();
+    if (!company) {
+      company = await prisma.company.create({
+        data: { name: 'Acme Corp', slug: 'acme-corp' },
+      });
+    }
 
     const waAccount = await prisma.whatsAppAccount.findFirst({
       where: { companyId: company.id },
@@ -83,6 +92,7 @@ export async function POST(req: NextRequest) {
         messageText: messageText || 'Olá, {{nome}}!',
         mediaType: mediaType || 'NONE',
         mediaUrl: mediaUrl || null,
+        buttonsJson: buttonsJson || null,
         totalRecipients: contactsToRecieve.length,
         batchRatePerMin: batchRatePerMin || 60,
       },

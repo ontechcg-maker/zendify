@@ -32,7 +32,6 @@ export class CampaignQueueProcessor {
     });
 
     for (const campaign of campaigns) {
-      // Transition status to PROCESSING if it was SCHEDULED or DRAFT
       if (campaign.status !== 'PROCESSING') {
         await prisma.campaign.update({
           where: { id: campaign.id },
@@ -40,11 +39,31 @@ export class CampaignQueueProcessor {
         });
       }
 
-      // Initialize WhatsApp client
+      // Initialize WhatsApp client (Evolution API or WABA)
       const waClient = new WhatsAppClient(
         campaign.whatsappAccount?.phoneNumberId,
         campaign.whatsappAccount?.accessToken
       );
+
+      // Parse multi-file attachments from campaign.buttonsJson or mediaUrl
+      let attachments: Array<{ type: 'IMAGE' | 'VIDEO' | 'DOCUMENT' | 'AUDIO'; url: string }> = [];
+      if (campaign.buttonsJson) {
+        try {
+          const parsed = JSON.parse(campaign.buttonsJson);
+          if (Array.isArray(parsed)) {
+            attachments = parsed.filter((a) => a.url);
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      if (attachments.length === 0 && campaign.mediaUrl && campaign.mediaType !== 'NONE') {
+        attachments.push({
+          type: campaign.mediaType as any,
+          url: campaign.mediaUrl,
+        });
+      }
 
       // Fetch pending recipients
       const recipients = await prisma.campaignRecipient.findMany({
@@ -77,7 +96,6 @@ export class CampaignQueueProcessor {
           contact.optOuts.length > 0;
 
         if (isOptedOut) {
-          // Skip recipient due to Opt-Out / LGPD compliance
           await prisma.campaignRecipient.update({
             where: { id: recipient.id },
             data: {
@@ -86,7 +104,6 @@ export class CampaignQueueProcessor {
             },
           });
 
-          // Log Opt-Out Audit
           await prisma.auditLog.create({
             data: {
               companyId: campaign.companyId,
@@ -108,11 +125,23 @@ export class CampaignQueueProcessor {
           .replace(/\{\{cidade\}\}/gi, contact.city || 'sua região')
           .replace(/\{\{telefone\}\}/gi, contact.whatsapp || contact.phone);
 
-        // Attempt dispatch via WhatsApp API
+        // 1. Dispatch main text message
         const dispatchResult = await waClient.sendTextMessage(contact.phone, messageText);
 
+        // 2. Dispatch multi-file media attachments (Images, Videos, Documents, Audios)
+        for (const att of attachments) {
+          try {
+            await waClient.sendMediaMessage(
+              contact.phone,
+              att.type.toLowerCase() as any,
+              att.url
+            );
+          } catch (e) {
+            console.error(`Falha ao enviar anexo ${att.type}:`, e);
+          }
+        }
+
         if (dispatchResult.success) {
-          // Update Recipient status
           await prisma.campaignRecipient.update({
             where: { id: recipient.id },
             data: {
@@ -121,7 +150,6 @@ export class CampaignQueueProcessor {
             },
           });
 
-          // Create Message record
           const msg = await prisma.message.create({
             data: {
               companyId: campaign.companyId,
@@ -136,20 +164,18 @@ export class CampaignQueueProcessor {
             },
           });
 
-          // Create Message Event
           await prisma.messageEvent.create({
             data: {
               messageId: msg.id,
               event: 'SENT',
               details: dispatchResult.isMock
-                ? 'Enviado via Simulador Graph API v20.0'
-                : `WABA Message ID: ${dispatchResult.wabaMessageId}`,
+                ? 'Enviado via Simulador WhatsApp'
+                : `Message ID: ${dispatchResult.wabaMessageId}`,
             },
           });
 
           sentInBatch++;
         } else {
-          // Record dispatch failure
           await prisma.campaignRecipient.update({
             where: { id: recipient.id },
             data: {
@@ -175,7 +201,6 @@ export class CampaignQueueProcessor {
         }
       }
 
-      // Check remaining pending recipients for campaign
       const remainingPending = await prisma.campaignRecipient.count({
         where: {
           campaignId: campaign.id,
@@ -185,14 +210,12 @@ export class CampaignQueueProcessor {
 
       const newCampaignStatus = remainingPending === 0 ? 'COMPLETED' : 'PROCESSING';
 
-      // Update aggregate counts on Campaign
       await prisma.campaign.update({
         where: { id: campaign.id },
         data: {
           status: newCampaignStatus,
           sentCount: { increment: sentInBatch },
           failedCount: { increment: failedInBatch },
-          // Automatically update deliverability simulation rates for rich dashboard UI
           deliveredCount: { increment: Math.max(0, sentInBatch - Math.floor(sentInBatch * 0.05)) },
           readCount: { increment: Math.floor(sentInBatch * 0.7) },
         },
