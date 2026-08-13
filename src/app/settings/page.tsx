@@ -1,11 +1,30 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Sidebar from '@/components/layout/Sidebar';
 import Navbar from '@/components/layout/Navbar';
-import { Settings, Building2, Users, ShieldCheck, Key, Lock } from 'lucide-react';
+import { Settings, Building2, Users } from 'lucide-react';
 
 export default function SettingsPage() {
+  const [companyData, setCompanyData] = useState<any>({
+    name: 'Minha Empresa',
+    cnpj: '',
+  });
+
+  useEffect(() => {
+    fetch('/api/v1/dashboard/stats')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.company) {
+          setCompanyData((prev: any) => ({
+            ...prev,
+            name: data.company.name || 'Minha Empresa',
+          }));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   return (
     <div className="flex min-h-screen bg-[#0b0f19] text-slate-100">
       <Sidebar />
@@ -33,9 +52,10 @@ export default function SettingsPage() {
                 <label className="text-slate-400 block mb-1">Razão Social / Nome Fantasia</label>
                 <input
                   type="text"
-                  readOnly
-                  value="Acme Corp Brasil Soluções Digitais"
-                  className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
+                  value={companyData.name}
+                  onChange={(e) => setCompanyData({ ...companyData, name: e.target.value })}
+                  placeholder="Nome da sua empresa"
+                  className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 focus:outline-none focus:border-emerald-500/50"
                 />
               </div>
 
@@ -43,9 +63,10 @@ export default function SettingsPage() {
                 <label className="text-slate-400 block mb-1">CNPJ</label>
                 <input
                   type="text"
-                  readOnly
-                  value="12.345.678/0001-90"
-                  className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
+                  value={companyData.cnpj}
+                  onChange={(e) => setCompanyData({ ...companyData, cnpj: e.target.value })}
+                  placeholder="00.000.000/0001-00"
+                  className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 focus:outline-none focus:border-emerald-500/50"
                 />
               </div>
             </div>
@@ -59,21 +80,11 @@ export default function SettingsPage() {
             <div className="space-y-2 text-xs">
               <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-between">
                 <div>
-                  <p className="font-bold text-white">Carlos Oliveira</p>
-                  <p className="text-[10px] text-slate-400">admin@zendify.io</p>
+                  <p className="font-bold text-white">Administrador</p>
+                  <p className="text-[10px] text-slate-400">admin@zendify.app</p>
                 </div>
                 <span className="px-2.5 py-0.5 rounded bg-purple-500/20 text-purple-300 font-bold uppercase text-[10px]">
                   COMPANY_ADMIN
-                </span>
-              </div>
-
-              <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-between">
-                <div>
-                  <p className="font-bold text-white">Mariana Souza</p>
-                  <p className="text-[10px] text-slate-400">operador@zendify.io</p>
-                </div>
-                <span className="px-2.5 py-0.5 rounded bg-blue-500/20 text-blue-300 font-bold uppercase text-[10px]">
-                  OPERATOR
                 </span>
               </div>
             </div>

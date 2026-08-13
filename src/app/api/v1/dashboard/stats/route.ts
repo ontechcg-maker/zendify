@@ -3,13 +3,30 @@ import { prisma } from '@/lib/prisma';
 
 export async function GET() {
   try {
-    // Fetch Acme Corp default demo company
-    const company = await prisma.company.findFirst({
-      where: { slug: 'acme-corp' },
-    });
+    // Fetch first available company or fallback
+    let company = await prisma.company.findFirst();
 
     if (!company) {
-      return NextResponse.json({ error: 'Empresa não encontrada' }, { status: 404 });
+      return NextResponse.json({
+        company: { name: 'Sua Empresa', slug: 'minha-empresa' },
+        stats: {
+          totalContacts: 0,
+          activeContacts: 0,
+          inactiveContacts: 0,
+          totalCampaigns: 0,
+          scheduledCampaignsCount: 0,
+          messagesSent: 0,
+          messagesDelivered: 0,
+          messagesRead: 0,
+          messagesReplied: 0,
+          messagesFailed: 0,
+          deliveryRate: '0.0%',
+          readRate: '0.0%',
+          responseRate: '0.0%',
+        },
+        recentCampaigns: [],
+        performanceChart: [],
+      });
     }
 
     const companyId = company.id;
@@ -42,16 +59,16 @@ export async function GET() {
       },
     });
 
-    const messagesSent = campaignAggregates._sum.sentCount || 18;
-    const messagesDelivered = campaignAggregates._sum.deliveredCount || 17;
-    const messagesRead = campaignAggregates._sum.readCount || 14;
-    const messagesReplied = campaignAggregates._sum.repliedCount || 6;
-    const messagesFailed = campaignAggregates._sum.failedCount || 1;
+    const messagesSent = campaignAggregates._sum.sentCount || 0;
+    const messagesDelivered = campaignAggregates._sum.deliveredCount || 0;
+    const messagesRead = campaignAggregates._sum.readCount || 0;
+    const messagesReplied = campaignAggregates._sum.repliedCount || 0;
+    const messagesFailed = campaignAggregates._sum.failedCount || 0;
 
     // Rates calculation
-    const deliveryRate = messagesSent > 0 ? ((messagesDelivered / messagesSent) * 100).toFixed(1) : '98.5';
-    const readRate = messagesDelivered > 0 ? ((messagesRead / messagesDelivered) * 100).toFixed(1) : '82.4';
-    const responseRate = messagesRead > 0 ? ((messagesReplied / messagesRead) * 100).toFixed(1) : '42.8';
+    const deliveryRate = messagesSent > 0 ? ((messagesDelivered / messagesSent) * 100).toFixed(1) : '0.0';
+    const readRate = messagesDelivered > 0 ? ((messagesRead / messagesDelivered) * 100).toFixed(1) : '0.0';
+    const responseRate = messagesRead > 0 ? ((messagesReplied / messagesRead) * 100).toFixed(1) : '0.0';
 
     // Recent Campaigns
     const recentCampaigns = await prisma.campaign.findMany({
@@ -64,15 +81,15 @@ export async function GET() {
       },
     });
 
-    // Performance Chart Data (Last 7 Days)
+    // Performance Chart Data - empty default or real zero days
     const performanceChart = [
-      { day: 'Seg', enviadas: 45, entregues: 44, lidas: 38, respostas: 18 },
-      { day: 'Ter', enviadas: 80, entregues: 79, lidas: 68, respostas: 32 },
-      { day: 'Qua', enviadas: 120, entregues: 118, lidas: 96, respostas: 45 },
-      { day: 'Qui', enviadas: 95, entregues: 94, lidas: 81, respostas: 39 },
-      { day: 'Sex', enviadas: 160, entregues: 157, lidas: 135, respostas: 62 },
-      { day: 'Sáb', enviadas: 30, entregues: 30, lidas: 24, respostas: 11 },
-      { day: 'Dom', enviadas: 15, entregues: 15, lidas: 12, respostas: 5 },
+      { day: 'Seg', enviadas: 0, entregues: 0, lidas: 0, respostas: 0 },
+      { day: 'Ter', enviadas: 0, entregues: 0, lidas: 0, respostas: 0 },
+      { day: 'Qua', enviadas: 0, entregues: 0, lidas: 0, respostas: 0 },
+      { day: 'Qui', enviadas: 0, entregues: 0, lidas: 0, respostas: 0 },
+      { day: 'Sex', enviadas: 0, entregues: 0, lidas: 0, respostas: 0 },
+      { day: 'Sáb', enviadas: 0, entregues: 0, lidas: 0, respostas: 0 },
+      { day: 'Dom', enviadas: 0, entregues: 0, lidas: 0, respostas: 0 },
     ];
 
     return NextResponse.json({

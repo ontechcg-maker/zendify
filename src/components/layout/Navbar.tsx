@@ -1,19 +1,42 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   Bell,
   Search,
   Plus,
-  Send,
   User,
-  ShieldCheck,
-  Globe,
-  Sparkles,
 } from 'lucide-react';
 
 export default function Navbar() {
+  const [userInfo, setUserInfo] = useState<{ name: string; role: string; company: string }>({
+    name: 'Administrador',
+    role: 'Admin',
+    company: 'Minha Empresa',
+  });
+
+  useEffect(() => {
+    fetch('/api/v1/dashboard/stats')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.company?.name) {
+          setUserInfo((prev) => ({
+            ...prev,
+            company: data.company.name,
+          }));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const initials = userInfo.name
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .substring(0, 2)
+    .toUpperCase();
+
   return (
     <header className="h-16 bg-slate-900/60 border-b border-slate-800 px-6 flex items-center justify-between sticky top-0 z-30 backdrop-blur-md">
       {/* Search Input */}
@@ -50,17 +73,16 @@ export default function Navbar() {
 
         <button className="p-2 rounded-xl text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 relative">
           <Bell className="w-4 h-4" />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-emerald-500 rounded-full"></span>
         </button>
 
         {/* User Profile */}
         <div className="flex items-center gap-3 pl-2 border-l border-slate-800">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-500 to-indigo-500 flex items-center justify-center font-bold text-white text-xs shadow-md">
-            CO
+          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-500 flex items-center justify-center font-bold text-slate-950 text-xs shadow-md">
+            {initials || 'AD'}
           </div>
           <div className="hidden md:block text-left text-xs">
-            <p className="font-semibold text-slate-200">Carlos Oliveira</p>
-            <p className="text-[10px] text-slate-400">Admin - Acme Corp</p>
+            <p className="font-semibold text-slate-200">{userInfo.name}</p>
+            <p className="text-[10px] text-slate-400">{userInfo.role} - {userInfo.company}</p>
           </div>
         </div>
       </div>

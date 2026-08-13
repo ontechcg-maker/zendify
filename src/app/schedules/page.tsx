@@ -1,12 +1,28 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Sidebar from '@/components/layout/Sidebar';
 import Navbar from '@/components/layout/Navbar';
-import { Calendar, Clock, Send, Plus, Pause, Play, Trash2 } from 'lucide-react';
+import { Calendar, Clock, Plus } from 'lucide-react';
 import Link from 'next/link';
 
 export default function SchedulesPage() {
+  const [schedules, setSchedules] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/v1/campaigns')
+      .then((res) => res.json())
+      .then((data) => {
+        const scheduled = Array.isArray(data?.campaigns)
+          ? data.campaigns.filter((c: any) => c.status === 'SCHEDULED')
+          : [];
+        setSchedules(scheduled);
+      })
+      .catch(() => setSchedules([]))
+      .finally(() => setLoading(false));
+  }, []);
+
   return (
     <div className="flex min-h-screen bg-[#0b0f19] text-slate-100">
       <Sidebar />
@@ -38,23 +54,39 @@ export default function SchedulesPage() {
           <div className="glass-panel p-6 rounded-3xl space-y-4">
             <h3 className="font-bold text-base text-white">Próximos Disparos Programados</h3>
 
-            <div className="p-4 bg-slate-900/60 rounded-2xl border border-slate-800 flex items-center justify-between text-xs">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 font-bold">
-                  <Clock className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="font-bold text-white text-sm">Reengajamento de Leads Q3</h4>
-                  <p className="text-slate-400 text-xs mt-0.5">Programado para: <span className="text-amber-300 font-mono font-semibold">14/08/2026 às 14:30</span></p>
-                </div>
+            {schedules.length === 0 ? (
+              <div className="p-8 text-center bg-slate-900/40 rounded-2xl border border-slate-800 text-slate-400 text-xs">
+                <Clock className="w-8 h-8 text-slate-600 mx-auto mb-2" />
+                <p className="font-semibold text-slate-300">Nenhum disparo agendado no momento</p>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Crie uma nova campanha e selecione uma data para agendamento.
+                </p>
               </div>
+            ) : (
+              <div className="space-y-2">
+                {schedules.map((item) => (
+                  <div key={item.id} className="p-4 bg-slate-900/60 rounded-2xl border border-slate-800 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 font-bold">
+                        <Clock className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-white text-sm">{item.name}</h4>
+                        <p className="text-slate-400 text-xs mt-0.5">
+                          Programado para: <span className="text-amber-300 font-mono font-semibold">{item.scheduledFor ? new Date(item.scheduledFor).toLocaleString('pt-BR') : 'Sem data definida'}</span>
+                        </p>
+                      </div>
+                    </div>
 
-              <div className="flex items-center gap-2">
-                <span className="px-3 py-1 bg-amber-500/20 text-amber-300 rounded-full text-[10px] font-bold">
-                  SCHEDULED
-                </span>
+                    <div className="flex items-center gap-2">
+                      <span className="px-3 py-1 bg-amber-500/20 text-amber-300 rounded-full text-[10px] font-bold">
+                        SCHEDULED
+                      </span>
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
+            )}
           </div>
         </main>
       </div>

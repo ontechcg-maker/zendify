@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -19,8 +19,6 @@ import {
   ShieldCheck,
   CreditCard,
   Settings,
-  CheckCircle2,
-  AlertCircle,
   Building2,
   Bot,
 } from 'lucide-react';
@@ -34,7 +32,7 @@ const menuItems = [
   { name: 'Templates', href: '/templates', icon: FileCode },
   { name: 'Agendamentos', href: '/schedules', icon: Calendar },
   { name: 'Fila de Envio', href: '/queue', icon: ListOrdered },
-  { name: 'Caixa de Entrada', href: '/inbox', icon: MessageSquare, badge: '2' },
+  { name: 'Caixa de Entrada', href: '/inbox', icon: MessageSquare },
   { name: 'Automações', href: '/automations', icon: Zap },
   { name: 'Relatórios', href: '/reports', icon: BarChart3 },
   { name: 'Logs & Auditoria', href: '/logs', icon: ScrollText },
@@ -46,6 +44,32 @@ const menuItems = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const [companyInfo, setCompanyInfo] = useState({
+    name: 'Minha Empresa',
+    plan: 'PRO',
+    messagesSent: 0,
+    maxMessages: 50000,
+  });
+
+  useEffect(() => {
+    fetch('/api/v1/dashboard/stats')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.company?.name) {
+          setCompanyInfo((prev) => ({
+            ...prev,
+            name: data.company.name,
+            messagesSent: data.stats?.messagesSent || 0,
+          }));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const percentage = Math.min(
+    100,
+    Math.round((companyInfo.messagesSent / companyInfo.maxMessages) * 100)
+  );
 
   return (
     <aside className="w-64 bg-slate-900/90 border-r border-slate-800 flex flex-col h-screen sticky top-0 z-40 backdrop-blur-md">
@@ -109,21 +133,26 @@ export default function Sidebar() {
       {/* Plan Usage Footer */}
       <div className="p-4 border-t border-slate-800 bg-slate-950/40">
         <div className="flex items-center justify-between text-xs mb-2">
-          <div className="flex items-center gap-1.5 text-slate-300 font-medium">
-            <Building2 className="w-3.5 h-3.5 text-emerald-400" />
-            <span className="truncate max-w-[110px]">Acme Corp</span>
+          <div className="flex items-center gap-1.5 text-slate-300 font-medium truncate max-w-[140px]">
+            <Building2 className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+            <span className="truncate">{companyInfo.name}</span>
           </div>
           <span className="px-1.5 py-0.5 text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 rounded font-semibold uppercase">
-            PRO
+            {companyInfo.plan}
           </span>
         </div>
         <div className="space-y-1.5 text-[11px] text-slate-400">
           <div className="flex justify-between">
             <span>Mensagens Mês</span>
-            <span className="text-slate-200 font-mono">1.240 / 50.000</span>
+            <span className="text-slate-200 font-mono">
+              {companyInfo.messagesSent.toLocaleString('pt-BR')} / {companyInfo.maxMessages.toLocaleString('pt-BR')}
+            </span>
           </div>
           <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
-            <div className="h-full bg-emerald-500 rounded-full" style={{ width: '12%' }}></div>
+            <div
+              className="h-full bg-emerald-500 rounded-full transition-all"
+              style={{ width: `${percentage}%` }}
+            ></div>
           </div>
         </div>
       </div>
