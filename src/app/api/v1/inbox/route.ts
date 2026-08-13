@@ -4,7 +4,7 @@ import { WhatsAppClient } from '@/lib/whatsapp';
 
 export async function GET(req: NextRequest) {
   try {
-    const company = await prisma.company.findFirst({ where: { slug: 'acme-corp' } });
+    const company = await prisma.company.findFirst({ where: { slug: 'minha-empresa' } });
     if (!company) return NextResponse.json({ error: 'Empresa não encontrada' }, { status: 404 });
 
     const conversations = await prisma.conversation.findMany({

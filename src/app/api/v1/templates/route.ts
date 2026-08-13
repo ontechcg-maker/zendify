@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 
 export async function GET() {
   try {
-    const company = await prisma.company.findFirst({ where: { slug: 'acme-corp' } });
+    const company = await prisma.company.findFirst({ where: { slug: 'minha-empresa' } });
     if (!company) return NextResponse.json({ error: 'Empresa não encontrada' }, { status: 404 });
 
     const templates = await prisma.template.findMany({
@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Nome e texto principal do template são obrigatórios' }, { status: 400 });
     }
 
-    const company = await prisma.company.findFirst({ where: { slug: 'acme-corp' } });
+    const company = await prisma.company.findFirst({ where: { slug: 'minha-empresa' } });
     if (!company) return NextResponse.json({ error: 'Empresa não encontrada' }, { status: 404 });
 
     const formattedName = name.toLowerCase().replace(/[^a-z0-9_]/g, '_');

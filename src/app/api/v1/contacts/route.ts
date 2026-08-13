@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
     const city = searchParams.get('city') || '';
     const tagId = searchParams.get('tagId') || '';
 
-    const company = await prisma.company.findFirst({ where: { slug: 'acme-corp' } });
+    const company = await prisma.company.findFirst({ where: { slug: 'minha-empresa' } });
     if (!company) return NextResponse.json({ error: 'Empresa não encontrada' }, { status: 404 });
 
     const where: any = { companyId: company.id };
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Nome e Telefone são obrigatórios' }, { status: 400 });
     }
 
-    const company = await prisma.company.findFirst({ where: { slug: 'acme-corp' } });
+    const company = await prisma.company.findFirst({ where: { slug: 'minha-empresa' } });
     if (!company) return NextResponse.json({ error: 'Empresa não encontrada' }, { status: 404 });
 
     // Format Phone

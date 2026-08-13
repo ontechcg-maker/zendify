@@ -25,6 +25,9 @@ import {
   Mail,
   Phone,
   RefreshCw,
+  MessageSquare,
+  Users2,
+  Import,
 } from 'lucide-react';
 
 export default function ContactsPage() {
@@ -58,6 +61,13 @@ export default function ContactsPage() {
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [importing, setImporting] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // WhatsApp Groups
+  const [isGroupsModalOpen, setIsGroupsModalOpen] = useState(false);
+  const [groups, setGroups] = useState<any[]>([]);
+  const [loadingGroups, setLoadingGroups] = useState(false);
+  const [importingGroup, setImportingGroup] = useState<string | null>(null);
+  const [groupFeedback, setGroupFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const fetchContacts = async () => {
     setLoading(true);
@@ -198,6 +208,48 @@ export default function ContactsPage() {
     );
   };
 
+  // Fetch WhatsApp Groups
+  const handleOpenGroups = async () => {
+    setIsGroupsModalOpen(true);
+    setGroupFeedback(null);
+    setLoadingGroups(true);
+    try {
+      const res = await fetch('/api/v1/whatsapp/groups');
+      const data = await res.json();
+      setGroups(data.groups || []);
+    } catch {
+      setGroups([]);
+    } finally {
+      setLoadingGroups(false);
+    }
+  };
+
+  const handleImportGroup = async (groupId: string, groupName: string) => {
+    setImportingGroup(groupId);
+    setGroupFeedback(null);
+    try {
+      const res = await fetch('/api/v1/whatsapp/groups/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ groupId, groupName, createSegment: true }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setGroupFeedback({
+          type: 'success',
+          text: `✅ "${groupName}": ${data.results.created} contatos criados, ${data.results.updated} atualizados. Lista de envio criada!`,
+        });
+        fetchContacts();
+      } else {
+        setGroupFeedback({ type: 'error', text: data.error || 'Erro ao importar grupo' });
+      }
+    } catch (err: any) {
+      setGroupFeedback({ type: 'error', text: err.message });
+    } finally {
+      setImportingGroup(null);
+    }
+  };
+
   return (
     <div className="flex min-h-screen bg-[#0b0f19] text-slate-100">
       <Sidebar />
@@ -218,6 +270,15 @@ export default function ContactsPage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
+              {/* WhatsApp Groups Button */}
+              <button
+                onClick={handleOpenGroups}
+                className="px-4 py-2 bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl flex items-center gap-2 shadow transition"
+              >
+                <MessageSquare className="w-4 h-4" />
+                <span>Grupos WhatsApp</span>
+              </button>
+
               <button
                 onClick={() => setIsAddModalOpen(true)}
                 className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition"
@@ -617,6 +678,109 @@ export default function ContactsPage() {
                       <span>Processar Importação</span>
                     </button>
                   </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Import WhatsApp Groups Modal */}
+          {isGroupsModalOpen && (
+            <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+              <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 md:p-8 max-w-2xl w-full shadow-2xl space-y-6 max-h-[85vh] flex flex-col">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
+                      <MessageSquare className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold text-white">Grupos do WhatsApp Conectado</h2>
+                      <p className="text-xs text-slate-400">
+                        Importe participantes dos seus grupos e crie listas de envio automáticas.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setIsGroupsModalOpen(false)}
+                    className="text-slate-400 hover:text-white p-2 rounded-xl hover:bg-slate-800 transition"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {groupFeedback && (
+                  <div
+                    className={`p-4 rounded-2xl border text-sm flex items-center gap-3 ${
+                      groupFeedback.type === 'success'
+                        ? 'bg-emerald-950/50 border-emerald-500/50 text-emerald-300'
+                        : 'bg-rose-950/50 border-rose-500/50 text-rose-300'
+                    }`}
+                  >
+                    {groupFeedback.type === 'success' ? (
+                      <CheckCircle className="w-5 h-5 shrink-0 text-emerald-400" />
+                    ) : (
+                      <AlertCircle className="w-5 h-5 shrink-0 text-rose-400" />
+                    )}
+                    <span>{groupFeedback.text}</span>
+                  </div>
+                )}
+
+                <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+                  {loadingGroups ? (
+                    <div className="py-12 flex flex-col items-center justify-center gap-3 text-slate-400">
+                      <RefreshCw className="w-8 h-8 animate-spin text-emerald-400" />
+                      <p className="text-sm">Carregando grupos do seu WhatsApp...</p>
+                    </div>
+                  ) : groups.length === 0 ? (
+                    <div className="py-12 text-center text-slate-400 space-y-2">
+                      <Users2 className="w-10 h-10 mx-auto text-slate-600" />
+                      <p className="font-semibold text-white">Nenhum grupo encontrado</p>
+                      <p className="text-xs max-w-sm mx-auto">
+                        Verifique se o seu WhatsApp está conectado na página de Integração ou se a sua conta possui grupos ativos.
+                      </p>
+                    </div>
+                  ) : (
+                    groups.map((group) => (
+                      <div
+                        key={group.id}
+                        className="p-4 rounded-2xl bg-slate-950/50 border border-slate-850 hover:border-emerald-500/30 flex items-center justify-between gap-4 transition"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-10 h-10 rounded-xl bg-slate-800 text-slate-300 flex items-center justify-center shrink-0 font-bold">
+                            <Users2 className="w-5 h-5 text-emerald-400" />
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className="font-bold text-sm text-white truncate">{group.subject}</h4>
+                            <p className="text-xs text-slate-400">
+                              {group.size} participantes • Criará Segmento e Tag automáticos
+                            </p>
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => handleImportGroup(group.id, group.subject)}
+                          disabled={importingGroup === group.id}
+                          className="px-3.5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl disabled:opacity-50 flex items-center gap-1.5 shrink-0 transition"
+                        >
+                          {importingGroup === group.id ? (
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Import className="w-3.5 h-3.5" />
+                          )}
+                          <span>Importar e Criar Lista</span>
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <div className="pt-4 border-t border-slate-800 flex justify-between items-center text-xs text-slate-400">
+                  <span>Os participantes importados receberão a tag e segmento com o nome do grupo.</span>
+                  <button
+                    onClick={() => setIsGroupsModalOpen(false)}
+                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold"
+                  >
+                    Fechar
+                  </button>
                 </div>
               </div>
             </div>

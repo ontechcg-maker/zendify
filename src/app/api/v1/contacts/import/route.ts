@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Nenhum contato fornecido para importação' }, { status: 400 });
     }
 
-    const company = await prisma.company.findFirst({ where: { slug: 'acme-corp' } });
+    const company = await prisma.company.findFirst({ where: { slug: 'minha-empresa' } });
     if (!company) return NextResponse.json({ error: 'Empresa não encontrada' }, { status: 404 });
 
     let importedCount = 0;

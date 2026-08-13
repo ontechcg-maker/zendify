@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
     let company = await prisma.company.findFirst();
     if (!company) {
       company = await prisma.company.create({
-        data: { name: 'Acme Corp', slug: 'acme-corp' },
+        data: { name: 'Acme Corp', slug: 'minha-empresa' },
       });
     }
 

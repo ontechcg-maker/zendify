@@ -303,10 +303,7 @@ export class EvolutionClient {
     try {
       const response = await fetch(`${this.serverUrl}/message/sendMedia/${this.instanceName}`, {
         method: 'POST',
-        headers: {
-          apikey: this.apiKey,
-          'Content-Type': 'application/json',
-        },
+        headers: this.getHeaders(true),
         body: JSON.stringify({
           number: formattedPhone,
           mediatype: mediaType,
@@ -328,6 +325,82 @@ export class EvolutionClient {
       return { success: true, messageId };
     } catch (err: any) {
       return { success: false, error: `Erro de mídia no Evolution API: ${err?.message}` };
+    }
+  }
+
+  /**
+   * Fetch all WhatsApp groups of the instance
+   */
+  public async fetchGroups(): Promise<Array<{
+    id: string;
+    subject: string;
+    size: number;
+    owner?: string;
+    pictureUrl?: string;
+    creation?: number;
+  }>> {
+    if (this.isMockMode) {
+      return [
+        { id: '120363000000000001@g.us', subject: 'Grupo Demo 1', size: 10 },
+        { id: '120363000000000002@g.us', subject: 'Grupo Demo 2', size: 25 },
+      ];
+    }
+    try {
+      const res = await fetch(
+        `${this.serverUrl}/group/fetchAllGroups/${this.instanceName}?getParticipants=false`,
+        { method: 'GET', headers: this.getHeaders() }
+      );
+      if (!res.ok) return [];
+      const data = await res.json();
+      const groups = Array.isArray(data) ? data : (data?.groups || []);
+      return groups.map((g: any) => ({
+        id: g.id || g.groupId,
+        subject: g.subject || g.name || 'Sem nome',
+        size: g.size || g.participants?.length || 0,
+        owner: g.owner,
+        pictureUrl: g.pictureUrl,
+        creation: g.creation,
+      }));
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Fetch participants of a specific WhatsApp group
+   */
+  public async fetchGroupParticipants(groupId: string): Promise<Array<{
+    id: string;
+    phone: string;
+    pushName?: string;
+    admin?: boolean;
+  }>> {
+    if (this.isMockMode) {
+      return [
+        { id: '5583999990001@s.whatsapp.net', phone: '5583999990001', pushName: 'Demo User 1' },
+        { id: '5583999990002@s.whatsapp.net', phone: '5583999990002', pushName: 'Demo User 2' },
+      ];
+    }
+    try {
+      const res = await fetch(
+        `${this.serverUrl}/group/participants/${this.instanceName}?groupJid=${encodeURIComponent(groupId)}`,
+        { method: 'GET', headers: this.getHeaders() }
+      );
+      if (!res.ok) return [];
+      const data = await res.json();
+      const participants: any[] = Array.isArray(data) ? data : (data?.participants || []);
+      return participants.map((p: any) => {
+        const rawId = p.id || p.jid || '';
+        const phone = rawId.replace('@s.whatsapp.net', '').replace('@c.us', '');
+        return {
+          id: rawId,
+          phone,
+          pushName: p.pushName || p.name,
+          admin: p.admin === 'admin' || p.admin === 'superadmin' || p.isAdmin === true,
+        };
+      });
+    } catch {
+      return [];
     }
   }
 }

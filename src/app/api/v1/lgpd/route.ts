@@ -6,7 +6,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const contactId = searchParams.get('contactId');
 
-    const company = await prisma.company.findFirst({ where: { slug: 'acme-corp' } });
+    const company = await prisma.company.findFirst({ where: { slug: 'minha-empresa' } });
     if (!company) return NextResponse.json({ error: 'Empresa não encontrada' }, { status: 404 });
 
     const optOuts = await prisma.optOut.findMany({

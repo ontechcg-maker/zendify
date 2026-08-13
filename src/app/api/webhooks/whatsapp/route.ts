@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ status: 'ignored' });
     }
 
-    const company = await prisma.company.findFirst({ where: { slug: 'acme-corp' } });
+    const company = await prisma.company.findFirst({ where: { slug: 'minha-empresa' } });
     if (!company) return NextResponse.json({ status: 'company_not_found' });
 
     // 1. Process Status Updates (sent, delivered, read, failed)
