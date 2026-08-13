@@ -231,7 +231,7 @@ export default function AIPage() {
                     type="button"
                     onClick={() => {
                       setProvider('GEMINI');
-                      setModel('gemini-2.0-flash');
+                      setModel('gemini-1.5-flash');
                     }}
                     className={`p-3 rounded-2xl border text-left flex flex-col gap-1 transition ${
                       provider === 'GEMINI'
@@ -240,7 +240,7 @@ export default function AIPage() {
                     }`}
                   >
                     <span className="font-extrabold text-xs text-white">Google Gemini</span>
-                    <span className="text-[10px] text-slate-400">Gemini 2.0 Flash</span>
+                    <span className="text-[10px] text-slate-400">Gemini 1.5 / 2.5 Flash</span>
                   </button>
                 </div>
 
@@ -272,7 +272,7 @@ export default function AIPage() {
                     type="text"
                     value={model}
                     onChange={(e) => setModel(e.target.value)}
-                    placeholder="Digite o ID do modelo (ex: anthropic/claude-3.5-sonnet, deepseek/deepseek-chat)"
+                    placeholder="Digite o ID do modelo (ex: gemini-1.5-flash, anthropic/claude-3.5-sonnet)"
                     className="w-full p-2.5 bg-slate-950 border border-purple-500/40 rounded-xl text-white font-mono text-xs focus:outline-none focus:ring-2 focus:ring-purple-500/40"
                     required
                   />
@@ -282,11 +282,12 @@ export default function AIPage() {
                     <span className="text-[10px] text-slate-400 block mb-1">Modelos sugeridos (clique para preencher):</span>
                     <div className="flex flex-wrap gap-1.5">
                       {[
+                        { label: 'Gemini 1.5 Flash', id: 'gemini-1.5-flash' },
+                        { label: 'Gemini 2.5 Flash', id: 'gemini-2.5-flash' },
                         { label: 'Claude 3.5 Sonnet', id: 'anthropic/claude-3.5-sonnet' },
                         { label: 'GPT-4o Mini', id: 'openai/gpt-4o-mini' },
                         { label: 'DeepSeek Chat / R1', id: 'deepseek/deepseek-chat' },
                         { label: 'Llama 3.3 70B', id: 'meta-llama/llama-3.3-70b-instruct' },
-                        { label: 'Gemini 2.0 Flash', id: 'google/gemini-2.0-flash-001' },
                         { label: 'Mistral Large', id: 'mistralai/mistral-large' },
                       ].map((m) => (
                         <button

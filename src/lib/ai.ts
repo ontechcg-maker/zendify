@@ -111,67 +111,109 @@ export class AIService {
         };
       } else if (this.config.provider === 'GEMINI') {
         // Direct Google Gemini API
-        let geminiModel = this.config.model || 'gemini-2.0-flash';
-        if (geminiModel.includes('/')) {
-          geminiModel = geminiModel.split('/')[1];
+        let primaryModel = (this.config.model || 'gemini-1.5-flash').trim();
+        if (primaryModel.includes('/')) {
+          primaryModel = primaryModel.split('/')[1];
         }
-        if (!geminiModel.startsWith('gemini')) {
-          geminiModel = 'gemini-2.0-flash';
+        if (primaryModel === 'gemini-2.0-flash' || !primaryModel.startsWith('gemini')) {
+          primaryModel = 'gemini-1.5-flash';
         }
 
-        const contents: Array<{ role: string; parts: Array<{ text: string }> }> = [];
+        const candidateModels = Array.from(
+          new Set([primaryModel, 'gemini-1.5-flash', 'gemini-2.5-flash', 'gemini-1.5-pro'])
+        );
+
+        const rawContents: Array<{ role: string; parts: Array<{ text: string }> }> = [];
 
         // Build history in Gemini format
         conversationHistory.slice(-5).forEach((msg) => {
-          contents.push({
-            role: msg.sender === 'CONTACT' ? 'user' : 'model',
-            parts: [{ text: msg.text }],
-          });
+          const role = msg.sender === 'CONTACT' || msg.sender === 'USER' ? 'user' : 'model';
+          if (msg.text && msg.text.trim()) {
+            rawContents.push({
+              role,
+              parts: [{ text: msg.text.trim() }],
+            });
+          }
         });
 
         // Add current user message
-        contents.push({
+        rawContents.push({
           role: 'user',
-          parts: [{ text: userMessage }],
+          parts: [{ text: userMessage.trim() }],
         });
 
-        const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${this.config.apiKey}`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              systemInstruction: {
-                parts: [{ text: this.config.systemPrompt }],
-              },
-              contents,
-              generationConfig: {
-                temperature: this.config.temperature,
-                maxOutputTokens: 500,
-              },
-            }),
+        // Sanitize contents to guarantee valid Gemini role alternation (user, model, user, model)
+        const contents: Array<{ role: string; parts: Array<{ text: string }> }> = [];
+        for (const item of rawContents) {
+          if (contents.length === 0) {
+            if (item.role === 'user') {
+              contents.push(item);
+            }
+          } else {
+            const lastRole = contents[contents.length - 1].role;
+            if (item.role !== lastRole) {
+              contents.push(item);
+            } else {
+              contents[contents.length - 1].parts[0].text += `\n${item.parts[0].text}`;
+            }
           }
-        );
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          const errorMsg = data?.error?.message || data?.message || `Erro HTTP ${response.status} no Gemini`;
-          return { success: false, error: `[Gemini Error]: ${errorMsg}` };
         }
 
-        const generatedText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (!generatedText) {
-          return { success: false, error: 'Google Gemini não retornou texto na resposta.' };
+        if (contents.length === 0) {
+          contents.push({ role: 'user', parts: [{ text: userMessage.trim() || 'Olá' }] });
         }
 
-        return {
-          success: true,
-          text: generatedText.trim(),
-          modelUsed: geminiModel,
-        };
+        let lastErrorMsg = '';
+
+        // Try primary model first, fallback to gemini-1.5-flash / gemini-2.5-flash if unavailable
+        for (const geminiModel of candidateModels) {
+          try {
+            const response = await fetch(
+              `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${this.config.apiKey}`,
+              {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  systemInstruction: {
+                    parts: [{ text: this.config.systemPrompt }],
+                  },
+                  contents,
+                  generationConfig: {
+                    temperature: this.config.temperature,
+                    maxOutputTokens: 500,
+                  },
+                }),
+              }
+            );
+
+            const data = await response.json();
+
+            if (!response.ok) {
+              lastErrorMsg = data?.error?.message || data?.message || `Erro HTTP ${response.status} no Gemini (${geminiModel})`;
+              if (response.status === 404 || lastErrorMsg.includes('no longer available') || lastErrorMsg.includes('not found')) {
+                continue;
+              }
+              return { success: false, error: `[Gemini Error]: ${lastErrorMsg}` };
+            }
+
+            const generatedText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (!generatedText) {
+              return { success: false, error: 'Google Gemini não retornou texto na resposta.' };
+            }
+
+            return {
+              success: true,
+              text: generatedText.trim(),
+              modelUsed: geminiModel,
+            };
+          } catch (err: any) {
+            lastErrorMsg = err?.message;
+          }
+        }
+
+        return { success: false, error: `[Gemini Error]: ${lastErrorMsg || 'Modelos Gemini indisponíveis'}` };
       } else {
         // Direct OpenAI API
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
