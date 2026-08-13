@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { EvolutionClient } from '@/lib/evolution';
+import { getOrCreateCompany } from '@/lib/company';
 
 export async function GET() {
   try {
-    const company = await prisma.company.findFirst();
-    if (!company) return NextResponse.json({ error: 'Empresa não encontrada' }, { status: 404 });
+    const company = await getOrCreateCompany();
 
     const account = await prisma.whatsAppAccount.findFirst({ where: { companyId: company.id } });
     if (!account) return NextResponse.json({ groups: [] });

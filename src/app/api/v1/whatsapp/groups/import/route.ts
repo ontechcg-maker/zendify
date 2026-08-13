@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { EvolutionClient } from '@/lib/evolution';
 import { WhatsAppClient } from '@/lib/whatsapp';
+import { getOrCreateCompany } from '@/lib/company';
 
 export async function POST(req: NextRequest) {
   try {
@@ -10,8 +11,7 @@ export async function POST(req: NextRequest) {
 
     if (!groupId) return NextResponse.json({ error: 'groupId é obrigatório' }, { status: 400 });
 
-    const company = await prisma.company.findFirst();
-    if (!company) return NextResponse.json({ error: 'Empresa não encontrada' }, { status: 404 });
+    const company = await getOrCreateCompany();
 
     const account = await prisma.whatsAppAccount.findFirst({ where: { companyId: company.id } });
     if (!account) return NextResponse.json({ error: 'Conta WhatsApp não configurada' }, { status: 400 });
