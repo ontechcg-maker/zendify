@@ -116,7 +116,7 @@ export default function Dashboard() {
               <div className="mt-3">
                 <span className="text-2xl font-black text-white">{stats.totalContacts || 0}</span>
                 <p className="text-[11px] text-emerald-400 mt-0.5 flex items-center gap-1 font-medium">
-                  <TrendingUp className="w-3 h-3" /> +12% este mês
+                  <TrendingUp className="w-3 h-3" /> {stats.totalContacts > 0 ? '+12% este mês' : 'Base zerada'}
                 </p>
               </div>
             </div>
@@ -209,21 +209,21 @@ export default function Dashboard() {
             {/* Card 9: Taxa de Entrega */}
             <div className="glass-card p-4 rounded-2xl border-l-4 border-l-emerald-500">
               <span className="text-xs font-medium text-slate-400">Taxa de Entrega</span>
-              <div className="text-2xl font-black text-emerald-400 mt-2">{stats.deliveryRate || '98.5%'}</div>
+              <div className="text-2xl font-black text-emerald-400 mt-2">{stats.deliveryRate ?? '0.0%'}</div>
               <p className="text-[10px] text-slate-400 mt-1">Status Meta WABA Oficial</p>
             </div>
 
             {/* Card 10: Taxa de Leitura */}
             <div className="glass-card p-4 rounded-2xl border-l-4 border-l-purple-500">
               <span className="text-xs font-medium text-slate-400">Taxa de Leitura</span>
-              <div className="text-2xl font-black text-purple-400 mt-2">{stats.readRate || '82.4%'}</div>
+              <div className="text-2xl font-black text-purple-400 mt-2">{stats.readRate ?? '0.0%'}</div>
               <p className="text-[10px] text-slate-400 mt-1">Engajamento de abertura</p>
             </div>
 
             {/* Card 11: Taxa de Resposta */}
             <div className="glass-card p-4 rounded-2xl border-l-4 border-l-blue-500">
               <span className="text-xs font-medium text-slate-400">Taxa de Resposta</span>
-              <div className="text-2xl font-black text-blue-400 mt-2">{stats.responseRate || '42.8%'}</div>
+              <div className="text-2xl font-black text-blue-400 mt-2">{stats.responseRate ?? '0.0%'}</div>
               <p className="text-[10px] text-slate-400 mt-1">Interação na Caixa de Entrada</p>
             </div>
 
