@@ -23,12 +23,22 @@ export class EvolutionClient {
   private isMockMode: boolean;
 
   constructor(config?: Partial<EvolutionConfig>) {
-    this.serverUrl = (config?.serverUrl || process.env.EVOLUTION_SERVER_URL || 'http://localhost:8080').replace(/\/$/, '');
-    this.instanceName = config?.instanceName || process.env.EVOLUTION_INSTANCE_NAME || 'zendify_instance';
-    this.apiKey = config?.apiKey || process.env.EVOLUTION_API_KEY || '';
+    this.serverUrl = (config?.serverUrl || process.env.EVOLUTION_SERVER_URL || 'http://localhost:8080').replace(/\/$/, '').trim();
+    this.instanceName = (config?.instanceName || process.env.EVOLUTION_INSTANCE_NAME || 'zendify_instance').trim();
+    this.apiKey = (config?.apiKey || process.env.EVOLUTION_API_KEY || '').trim();
     
     // Check if credentials are missing or default demo
     this.isMockMode = !this.serverUrl || !this.apiKey || this.apiKey.includes('demo') || this.apiKey === '';
+  }
+
+  private getHeaders(): Record<string, string> {
+    const key = this.apiKey.trim();
+    return {
+      apikey: key,
+      ApiKey: key,
+      Authorization: `Bearer ${key}`,
+      'Content-Type': 'application/json',
+    };
   }
 
   /**
@@ -63,18 +73,17 @@ export class EvolutionClient {
     }
 
     try {
-      const response = await fetch(`${this.serverUrl}/instance/connectionState/${this.instanceName}`, {
+      const url = `${this.serverUrl}/instance/connectionState/${this.instanceName}?apikey=${encodeURIComponent(this.apiKey)}`;
+      const response = await fetch(url, {
         method: 'GET',
-        headers: {
-          apikey: this.apiKey,
-        },
+        headers: this.getHeaders(),
       });
 
       if (response.status === 401 || response.status === 403) {
         return {
           connected: false,
           state: 'close',
-          message: `🔴 Chave de API (API Key) não autorizada no servidor Evolution (${this.serverUrl}). Verifique a API Key informada.`,
+          message: `🔴 Chave de API (API Key) não autorizada no servidor Evolution (${this.serverUrl}). Verifique se colou a Global Key correta.`,
           instanceName: this.instanceName,
         };
       }
@@ -127,12 +136,10 @@ export class EvolutionClient {
    */
   public async createAndConnectInstance(): Promise<any> {
     try {
-      const createRes = await fetch(`${this.serverUrl}/instance/create`, {
+      const url = `${this.serverUrl}/instance/create?apikey=${encodeURIComponent(this.apiKey)}`;
+      const createRes = await fetch(url, {
         method: 'POST',
-        headers: {
-          apikey: this.apiKey,
-          'Content-Type': 'application/json',
-        },
+        headers: this.getHeaders(),
         body: JSON.stringify({
           instanceName: this.instanceName,
           qrcode: true,
@@ -202,15 +209,16 @@ export class EvolutionClient {
    */
   public async getQrCode(): Promise<{ qrCodeBase64?: string; pairingCode?: string }> {
     try {
-      let res = await fetch(`${this.serverUrl}/instance/connect/${this.instanceName}`, {
+      const url = `${this.serverUrl}/instance/connect/${this.instanceName}?apikey=${encodeURIComponent(this.apiKey)}`;
+      let res = await fetch(url, {
         method: 'GET',
-        headers: { apikey: this.apiKey },
+        headers: this.getHeaders(),
       });
 
       if (!res.ok) {
-        res = await fetch(`${this.serverUrl}/instance/connect/${this.instanceName}`, {
+        res = await fetch(url, {
           method: 'POST',
-          headers: { apikey: this.apiKey, 'Content-Type': 'application/json' },
+          headers: this.getHeaders(),
         });
       }
 
