@@ -25,9 +25,10 @@ export class AIService {
   private isMockMode: boolean;
 
   constructor(config?: Partial<AIConfig>) {
+    const rawApiKey = (config?.apiKey || process.env.OPENROUTER_API_KEY || '').trim();
     this.config = {
       provider: config?.provider || 'OPENROUTER',
-      apiKey: config?.apiKey || process.env.OPENROUTER_API_KEY || '',
+      apiKey: rawApiKey,
       model: config?.model || 'anthropic/claude-3.5-sonnet',
       systemPrompt:
         config?.systemPrompt ||

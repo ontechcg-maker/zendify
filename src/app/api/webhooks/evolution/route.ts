@@ -99,19 +99,41 @@ export async function POST(req: NextRequest) {
             where: { companyId: company.id },
           });
 
-          const autoReplyEnabled = waAccount?.isDefault ?? false;
+          let aiProvider: any = 'GEMINI';
+          let aiApiKey = '';
+          let aiModel = 'gemini-2.0-flash';
+          let aiSystemPrompt = 'Você é o assistente virtual da empresa. Responda as dúvidas do cliente no WhatsApp.';
+          let autoReplyEnabled = waAccount?.isDefault ?? false;
+
+          if (waAccount?.verifyToken) {
+            try {
+              const parsed = JSON.parse(waAccount.verifyToken);
+              if (parsed && typeof parsed === 'object') {
+                if (parsed.provider) aiProvider = parsed.provider;
+                if (parsed.apiKey) aiApiKey = parsed.apiKey;
+                if (parsed.model) aiModel = parsed.model;
+                if (parsed.systemPrompt) aiSystemPrompt = parsed.systemPrompt;
+                if (parsed.autoReplyEnabled !== undefined) autoReplyEnabled = parsed.autoReplyEnabled;
+              }
+            } catch (e) {
+              aiApiKey = waAccount.verifyToken;
+              if (waAccount.qualityRating) aiModel = waAccount.qualityRating;
+              if (waAccount.displayPhone) aiSystemPrompt = waAccount.displayPhone;
+              if (aiApiKey.startsWith('AIza')) aiProvider = 'GEMINI';
+              else if (aiApiKey.startsWith('sk-or')) aiProvider = 'OPENROUTER';
+              else if (aiApiKey.startsWith('sk-')) aiProvider = 'OPENAI';
+            }
+          }
 
           if (autoReplyEnabled) {
-            console.log(`[AI Agent] Triggering Auto-Reply for ${formattedPhone}...`);
+            console.log(`[AI Agent] Triggering Auto-Reply (${aiProvider}) for ${formattedPhone}...`);
 
             // Initialize AI Service
             const aiService = new AIService({
-              provider: 'OPENROUTER',
-              apiKey: waAccount?.verifyToken || '',
-              model: waAccount?.qualityRating || 'anthropic/claude-3.5-sonnet',
-              systemPrompt:
-                waAccount?.displayPhone ||
-                'Você é o assistente virtual da empresa. Responda as dúvidas do cliente no WhatsApp.',
+              provider: aiProvider,
+              apiKey: aiApiKey,
+              model: aiModel,
+              systemPrompt: aiSystemPrompt,
             });
 
             // Generate AI Response
