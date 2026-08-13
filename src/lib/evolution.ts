@@ -31,14 +31,15 @@ export class EvolutionClient {
     this.isMockMode = !this.serverUrl || !this.apiKey || this.apiKey.includes('demo') || this.apiKey === '';
   }
 
-  private getHeaders(): Record<string, string> {
+  private getHeaders(withBody = false): Record<string, string> {
     const key = this.apiKey.trim();
-    return {
+    const headers: Record<string, string> = {
       apikey: key,
-      ApiKey: key,
-      Authorization: `Bearer ${key}`,
-      'Content-Type': 'application/json',
     };
+    if (withBody) {
+      headers['Content-Type'] = 'application/json';
+    }
+    return headers;
   }
 
   /**
@@ -73,7 +74,7 @@ export class EvolutionClient {
     }
 
     try {
-      const url = `${this.serverUrl}/instance/connectionState/${this.instanceName}?apikey=${encodeURIComponent(this.apiKey)}`;
+      const url = `${this.serverUrl}/instance/connectionState/${this.instanceName}`;
       const response = await fetch(url, {
         method: 'GET',
         headers: this.getHeaders(),
@@ -136,10 +137,10 @@ export class EvolutionClient {
    */
   public async createAndConnectInstance(): Promise<any> {
     try {
-      const url = `${this.serverUrl}/instance/create?apikey=${encodeURIComponent(this.apiKey)}`;
+      const url = `${this.serverUrl}/instance/create`;
       const createRes = await fetch(url, {
         method: 'POST',
-        headers: this.getHeaders(),
+        headers: this.getHeaders(true),
         body: JSON.stringify({
           instanceName: this.instanceName,
           qrcode: true,
@@ -209,7 +210,7 @@ export class EvolutionClient {
    */
   public async getQrCode(): Promise<{ qrCodeBase64?: string; pairingCode?: string }> {
     try {
-      const url = `${this.serverUrl}/instance/connect/${this.instanceName}?apikey=${encodeURIComponent(this.apiKey)}`;
+      const url = `${this.serverUrl}/instance/connect/${this.instanceName}`;
       let res = await fetch(url, {
         method: 'GET',
         headers: this.getHeaders(),
@@ -218,7 +219,7 @@ export class EvolutionClient {
       if (!res.ok) {
         res = await fetch(url, {
           method: 'POST',
-          headers: this.getHeaders(),
+          headers: this.getHeaders(true),
         });
       }
 
@@ -255,10 +256,7 @@ export class EvolutionClient {
     try {
       const response = await fetch(`${this.serverUrl}/message/sendText/${this.instanceName}`, {
         method: 'POST',
-        headers: {
-          apikey: this.apiKey,
-          'Content-Type': 'application/json',
-        },
+        headers: this.getHeaders(true),
         body: JSON.stringify({
           number: formattedPhone,
           text: textBody,

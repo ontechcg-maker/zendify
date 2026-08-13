@@ -21,8 +21,8 @@ export default function IntegrationPage() {
 
   // Evolution API fields
   const [serverUrl, setServerUrl] = useState('https://evo.ontechcg.cloud');
-  const [instanceName, setInstanceName] = useState('zendify_instancia_1');
-  const [apiKey, setApiKey] = useState('zendify_secret_key_2026');
+  const [instanceName, setInstanceName] = useState('zendify');
+  const [apiKey, setApiKey] = useState('');
 
   // Meta WABA fields
   const [wabaId, setWabaId] = useState('');
