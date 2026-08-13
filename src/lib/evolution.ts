@@ -70,8 +70,17 @@ export class EvolutionClient {
         },
       });
 
+      if (response.status === 401 || response.status === 403) {
+        return {
+          connected: false,
+          state: 'close',
+          message: `🔴 Chave de API (API Key) não autorizada no servidor Evolution (${this.serverUrl}). Verifique a API Key informada.`,
+          instanceName: this.instanceName,
+        };
+      }
+
       if (!response.ok) {
-        // Try creating instance if it doesn't exist yet
+        // Instance does not exist yet (404 or other error) -> try creating instance
         return this.createAndConnectInstance();
       }
 
@@ -90,6 +99,11 @@ export class EvolutionClient {
 
       // If disconnected or connecting, fetch QR Code
       const qrData = await this.getQrCode();
+      if (!qrData.qrCodeBase64) {
+        // Try creating instance if connect didn't return a QR code
+        return this.createAndConnectInstance();
+      }
+
       return {
         connected: false,
         state,
@@ -127,13 +141,50 @@ export class EvolutionClient {
       });
 
       const data = await createRes.json();
-      const qrCodeBase64 = data?.qrcode?.base64 || data?.base64;
+
+      if (!createRes.ok) {
+        const rawErr = data?.response?.message || data?.message || data?.error || '';
+        const errMsg = Array.isArray(rawErr) ? rawErr.join(', ') : String(rawErr);
+
+        if (errMsg.toLowerCase().includes('already exist') || createRes.status === 403 || createRes.status === 400) {
+          const qrData = await this.getQrCode();
+          return {
+            connected: false,
+            state: 'connecting',
+            qrCodeBase64: qrData.qrCodeBase64,
+            pairingCode: qrData.pairingCode,
+            message: qrData.qrCodeBase64
+              ? `🟡 Instância "${this.instanceName}" já existente. Escaneie o QR Code abaixo para conectar.`
+              : `🔴 Instância "${this.instanceName}" já existe no Evolution API, mas não foi possível gerar o QR Code. Erro: ${errMsg || 'Desconhecido'}`,
+            instanceName: this.instanceName,
+          };
+        }
+
+        return {
+          connected: false,
+          state: 'close',
+          message: `🔴 Falha ao criar instância "${this.instanceName}" no Evolution API (HTTP ${createRes.status}): ${errMsg || 'Verifique se a API Key é a Global Key do Evolution'}`,
+          instanceName: this.instanceName,
+        };
+      }
+
+      let qrCodeBase64 = data?.qrcode?.base64 || data?.base64 || data?.qrcode?.code || data?.code;
+      let pairingCode = data?.qrcode?.pairingCode || data?.pairingCode;
+
+      if (!qrCodeBase64) {
+        const qrData = await this.getQrCode();
+        qrCodeBase64 = qrData.qrCodeBase64;
+        pairingCode = qrData.pairingCode;
+      }
 
       return {
         connected: false,
         state: 'connecting',
         qrCodeBase64,
-        message: `🟡 Instância "${this.instanceName}" criada. Escaneie o QR Code para conectar.`,
+        pairingCode,
+        message: qrCodeBase64
+          ? `🟡 Instância "${this.instanceName}" criada com sucesso! Escaneie o QR Code para conectar.`
+          : `🟡 Instância "${this.instanceName}" criada. Clique em "Testar Status & QR Code" para exibir o QR Code.`,
         instanceName: this.instanceName,
       };
     } catch (err: any) {
@@ -151,14 +202,27 @@ export class EvolutionClient {
    */
   public async getQrCode(): Promise<{ qrCodeBase64?: string; pairingCode?: string }> {
     try {
-      const res = await fetch(`${this.serverUrl}/instance/connect/${this.instanceName}`, {
+      let res = await fetch(`${this.serverUrl}/instance/connect/${this.instanceName}`, {
         method: 'GET',
         headers: { apikey: this.apiKey },
       });
+
+      if (!res.ok) {
+        res = await fetch(`${this.serverUrl}/instance/connect/${this.instanceName}`, {
+          method: 'POST',
+          headers: { apikey: this.apiKey, 'Content-Type': 'application/json' },
+        });
+      }
+
+      if (!res.ok) return {};
+
       const data = await res.json();
+      const qrCodeBase64 = data?.base64 || data?.qrcode?.base64 || data?.code || data?.qrcode?.code;
+      const pairingCode = data?.pairingCode || data?.qrcode?.pairingCode;
+
       return {
-        qrCodeBase64: data?.base64 || data?.qrcode?.base64,
-        pairingCode: data?.pairingCode,
+        qrCodeBase64,
+        pairingCode,
       };
     } catch (err) {
       return {};

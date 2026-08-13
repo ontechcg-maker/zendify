@@ -262,8 +262,23 @@ export default function IntegrationPage() {
                 <span>Escaneie o QR Code no seu WhatsApp</span>
               </div>
               <div className="p-3 bg-white rounded-2xl shadow-2xl">
-                <img src={qrCodeBase64.startsWith('data:') ? qrCodeBase64 : `data:image/png;base64,${qrCodeBase64}`} alt="QR Code WhatsApp" className="w-56 h-56" />
+                <img
+                  src={
+                    qrCodeBase64.startsWith('http') || qrCodeBase64.startsWith('data:')
+                      ? qrCodeBase64
+                      : qrCodeBase64.length > 100
+                      ? `data:image/png;base64,${qrCodeBase64}`
+                      : `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrCodeBase64)}`
+                  }
+                  alt="QR Code WhatsApp"
+                  className="w-56 h-56"
+                />
               </div>
+              {testResult?.pairingCode && (
+                <div className="px-4 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs font-mono text-emerald-300">
+                  Código de Pareamento: <span className="font-extrabold text-white">{testResult.pairingCode}</span>
+                </div>
+              )}
               <p className="text-xs text-slate-400 max-w-sm">
                 Abra o WhatsApp no celular {'>'} **Dispositivos Conectados** {'>'} **Conectar um dispositivo** e aponte a câmera.
               </p>
