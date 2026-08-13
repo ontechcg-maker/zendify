@@ -108,6 +108,69 @@ export class AIService {
           text: generatedText.trim(),
           modelUsed: data?.model || this.config.model,
         };
+      } else if (this.config.provider === 'GEMINI') {
+        // Direct Google Gemini API
+        let geminiModel = this.config.model || 'gemini-2.0-flash';
+        if (geminiModel.includes('/')) {
+          geminiModel = geminiModel.split('/')[1];
+        }
+        if (!geminiModel.startsWith('gemini')) {
+          geminiModel = 'gemini-2.0-flash';
+        }
+
+        const contents: Array<{ role: string; parts: Array<{ text: string }> }> = [];
+
+        // Build history in Gemini format
+        conversationHistory.slice(-5).forEach((msg) => {
+          contents.push({
+            role: msg.sender === 'CONTACT' ? 'user' : 'model',
+            parts: [{ text: msg.text }],
+          });
+        });
+
+        // Add current user message
+        contents.push({
+          role: 'user',
+          parts: [{ text: userMessage }],
+        });
+
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${this.config.apiKey}`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              systemInstruction: {
+                parts: [{ text: this.config.systemPrompt }],
+              },
+              contents,
+              generationConfig: {
+                temperature: this.config.temperature,
+                maxOutputTokens: 500,
+              },
+            }),
+          }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          const errorMsg = data?.error?.message || data?.message || `Erro HTTP ${response.status} no Gemini`;
+          return { success: false, error: `[Gemini Error]: ${errorMsg}` };
+        }
+
+        const generatedText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!generatedText) {
+          return { success: false, error: 'Google Gemini não retornou texto na resposta.' };
+        }
+
+        return {
+          success: true,
+          text: generatedText.trim(),
+          modelUsed: geminiModel,
+        };
       } else {
         // Direct OpenAI API
         const response = await fetch('https://api.openai.com/v1/chat/completions', {

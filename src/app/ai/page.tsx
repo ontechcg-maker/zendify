@@ -197,7 +197,10 @@ export default function AIPage() {
                 <div className="grid grid-cols-3 gap-3">
                   <button
                     type="button"
-                    onClick={() => setProvider('OPENROUTER')}
+                    onClick={() => {
+                      setProvider('OPENROUTER');
+                      setModel('anthropic/claude-3.5-sonnet');
+                    }}
                     className={`p-3 rounded-2xl border text-left flex flex-col gap-1 transition ${
                       provider === 'OPENROUTER'
                         ? 'bg-purple-950/50 border-purple-500 text-purple-300 ring-2 ring-purple-500/30'
@@ -210,7 +213,10 @@ export default function AIPage() {
 
                   <button
                     type="button"
-                    onClick={() => setProvider('OPENAI')}
+                    onClick={() => {
+                      setProvider('OPENAI');
+                      setModel('gpt-4o-mini');
+                    }}
                     className={`p-3 rounded-2xl border text-left flex flex-col gap-1 transition ${
                       provider === 'OPENAI'
                         ? 'bg-purple-950/50 border-purple-500 text-purple-300 ring-2 ring-purple-500/30'
@@ -223,7 +229,10 @@ export default function AIPage() {
 
                   <button
                     type="button"
-                    onClick={() => setProvider('GEMINI')}
+                    onClick={() => {
+                      setProvider('GEMINI');
+                      setModel('gemini-2.0-flash');
+                    }}
                     className={`p-3 rounded-2xl border text-left flex flex-col gap-1 transition ${
                       provider === 'GEMINI'
                         ? 'bg-purple-950/50 border-purple-500 text-purple-300 ring-2 ring-purple-500/30'
@@ -250,7 +259,7 @@ export default function AIPage() {
                     className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white font-mono"
                   />
                   <p className="text-[10px] text-slate-400 mt-1">
-                    Insira sua chave da OpenRouter. Se mantido em branco, o sistema utilizará o **Simulador de IA**.
+                    Insira sua chave de API ({provider === 'OPENROUTER' ? 'OpenRouter' : provider === 'OPENAI' ? 'OpenAI' : 'Google AI Studio (Gemini)'}). Se mantido em branco, o sistema utilizará o **Simulador de IA**.
                   </p>
                 </div>
 
