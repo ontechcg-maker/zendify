@@ -25,6 +25,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const {
+      id,
       provider = 'EVOLUTION',
       serverUrl,
       instanceName,
@@ -39,19 +40,34 @@ export async function POST(req: NextRequest) {
     let company = await prisma.company.findFirst();
     if (!company) {
       company = await prisma.company.create({
-        data: { name: 'Acme Corp', slug: 'acme-corp' },
+        data: { name: 'Minha Empresa', slug: 'minha-empresa' },
       });
     }
 
+    // Find existing account for the company if any
+    const existingAccount = await prisma.whatsAppAccount.findFirst({
+      where: { companyId: company.id },
+    });
+
+    const targetId = id || existingAccount?.id || 'default-id';
+
     // Check Evolution API status if selected
-    let connTest: any = { connected: true, message: 'Configurações salvas' };
-    if (provider === 'EVOLUTION') {
-      const evoClient = new EvolutionClient({ serverUrl, instanceName, apiKey });
-      connTest = await evoClient.getInstanceStatus();
+    let connTest: any = { connected: true, message: 'Configurações salvas com sucesso!' };
+    if (provider === 'EVOLUTION' && serverUrl && apiKey) {
+      try {
+        const evoClient = new EvolutionClient({ serverUrl, instanceName, apiKey });
+        connTest = await evoClient.getInstanceStatus();
+      } catch (e: any) {
+        connTest = {
+          connected: false,
+          state: 'close',
+          message: `🔴 Não foi possível conectar ao servidor (${serverUrl}): ${e?.message || 'Erro de rede'}`,
+        };
+      }
     }
 
     const account = await prisma.whatsAppAccount.upsert({
-      where: { id: body.id || 'default-id' },
+      where: { id: targetId },
       update: {
         name: provider === 'EVOLUTION' ? `Evolution (${instanceName})` : 'WABA Meta Oficial',
         wabaId: provider === 'EVOLUTION' ? serverUrl : wabaId,
@@ -62,7 +78,7 @@ export async function POST(req: NextRequest) {
         status: connTest.connected ? 'CONNECTED' : 'DISCONNECTED',
       },
       create: {
-        id: 'default-id',
+        id: targetId,
         companyId: company.id,
         name: provider === 'EVOLUTION' ? `Evolution (${instanceName})` : 'WABA Meta Oficial',
         wabaId: provider === 'EVOLUTION' ? serverUrl : wabaId,

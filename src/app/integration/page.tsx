@@ -6,11 +6,8 @@ import Navbar from '@/components/layout/Navbar';
 import {
   Plug,
   CheckCircle2,
-  AlertTriangle,
   RefreshCw,
   Server,
-  Key,
-  Smartphone,
   QrCode,
   Globe,
   Radio,
@@ -20,9 +17,10 @@ import {
 
 export default function IntegrationPage() {
   const [provider, setProvider] = useState<'EVOLUTION' | 'META'>('EVOLUTION');
+  const [accountId, setAccountId] = useState<string | null>(null);
 
   // Evolution API fields
-  const [serverUrl, setServerUrl] = useState('http://localhost:8080');
+  const [serverUrl, setServerUrl] = useState('https://evo.ontechcg.cloud');
   const [instanceName, setInstanceName] = useState('zendify_instancia_1');
   const [apiKey, setApiKey] = useState('zendify_secret_key_2026');
 
@@ -31,7 +29,7 @@ export default function IntegrationPage() {
   const [phoneNumberId, setPhoneNumberId] = useState('');
   const [accessToken, setAccessToken] = useState('');
 
-  const [webhookUrl, setWebhookUrl] = useState('http://localhost:3000/api/webhooks/evolution');
+  const [webhookUrl, setWebhookUrl] = useState('https://zendify.ontechcg.cloud/api/webhooks/evolution');
   const [qrCodeBase64, setQrCodeBase64] = useState<string | null>(null);
 
   const [testing, setTesting] = useState(false);
@@ -39,14 +37,22 @@ export default function IntegrationPage() {
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const origin = window.location.origin;
+      setWebhookUrl(`${origin}/api/webhooks/${provider === 'EVOLUTION' ? 'evolution' : 'whatsapp'}`);
+    }
+  }, [provider]);
+
   const fetchConfig = async () => {
     try {
       const res = await fetch('/api/v1/whatsapp/config');
       const data = await res.json();
       if (data.account) {
+        setAccountId(data.account.id);
         if (data.account.name?.includes('Evolution')) {
           setProvider('EVOLUTION');
-          setServerUrl(data.account.wabaId || 'http://localhost:8080');
+          setServerUrl(data.account.wabaId || 'https://evo.ontechcg.cloud');
           setInstanceName(data.account.phoneNumberId || 'zendify_instancia_1');
           setApiKey(data.account.accessToken || 'zendify_secret_key_2026');
         } else {
@@ -65,18 +71,27 @@ export default function IntegrationPage() {
     fetchConfig();
   }, []);
 
-  const handleTestConnection = async () => {
+  const handleTestConnection = async (
+    customServerUrl?: string,
+    customInstanceName?: string,
+    customApiKey?: string
+  ) => {
     setTesting(true);
     setTestResult(null);
+
+    const targetServerUrl = customServerUrl || serverUrl;
+    const targetInstanceName = customInstanceName || instanceName;
+    const targetApiKey = customApiKey || apiKey;
+
     try {
       const res = await fetch('/api/v1/whatsapp/test-connection', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           provider,
-          serverUrl,
-          instanceName,
-          apiKey,
+          serverUrl: targetServerUrl,
+          instanceName: targetInstanceName,
+          apiKey: targetApiKey,
           phoneNumberId,
           accessToken,
         }),
@@ -102,6 +117,7 @@ export default function IntegrationPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          id: accountId,
           provider,
           serverUrl,
           instanceName,
@@ -113,13 +129,21 @@ export default function IntegrationPage() {
         }),
       });
 
-      if (res.ok) {
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        if (data.account?.id) {
+          setAccountId(data.account.id);
+        }
         setSaved(true);
         setTimeout(() => setSaved(false), 3000);
-        handleTestConnection();
+        handleTestConnection(serverUrl, instanceName, apiKey);
+      } else {
+        alert(`Erro ao salvar: ${data.error || 'Falha ao salvar configurações'}`);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      alert(`Erro de comunicação: ${err.message}`);
     }
   };
 
@@ -152,7 +176,6 @@ export default function IntegrationPage() {
               type="button"
               onClick={() => {
                 setProvider('EVOLUTION');
-                setWebhookUrl('http://localhost:3000/api/webhooks/evolution');
               }}
               className={`p-4 rounded-2xl border flex items-center gap-3 transition text-left ${
                 provider === 'EVOLUTION'
@@ -173,7 +196,6 @@ export default function IntegrationPage() {
               type="button"
               onClick={() => {
                 setProvider('META');
-                setWebhookUrl('http://localhost:3000/api/webhooks/whatsapp');
               }}
               className={`p-4 rounded-2xl border flex items-center gap-3 transition text-left ${
                 provider === 'META'
@@ -209,7 +231,8 @@ export default function IntegrationPage() {
             </div>
 
             <button
-              onClick={handleTestConnection}
+              type="button"
+              onClick={() => handleTestConnection()}
               disabled={testing}
               className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl flex items-center gap-2 shadow-lg shadow-emerald-500/20 disabled:opacity-50 transition"
             >
@@ -261,7 +284,7 @@ export default function IntegrationPage() {
                     type="text"
                     value={serverUrl}
                     onChange={(e) => setServerUrl(e.target.value)}
-                    placeholder="Ex: http://localhost:8080 ou https://api.suaempresa.com"
+                    placeholder="Ex: https://evo.ontechcg.cloud"
                     className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white font-mono"
                     required
                   />
