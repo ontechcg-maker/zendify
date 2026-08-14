@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getOrCreateCompany } from '@/lib/company';
 
 export async function GET() {
   try {
-    const company = await prisma.company.findFirst({ where: { slug: 'minha-empresa' } });
-    if (!company) return NextResponse.json({ error: 'Empresa não encontrada' }, { status: 404 });
+    const company = await getOrCreateCompany();
 
     const automations = await prisma.automation.findMany({
       where: { companyId: company.id },
@@ -31,8 +31,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Nome e Tipo de Gatilho são obrigatórios' }, { status: 400 });
     }
 
-    const company = await prisma.company.findFirst({ where: { slug: 'minha-empresa' } });
-    if (!company) return NextResponse.json({ error: 'Empresa não encontrada' }, { status: 404 });
+    const company = await getOrCreateCompany();
 
     const automation = await prisma.automation.create({
       data: {
@@ -63,3 +62,4 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+

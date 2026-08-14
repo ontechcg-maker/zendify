@@ -1,33 +1,11 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getOrCreateCompany } from '@/lib/company';
 
 export async function GET() {
   try {
-    // Fetch first available company or fallback
-    let company = await prisma.company.findFirst();
+    const company = await getOrCreateCompany();
 
-    if (!company) {
-      return NextResponse.json({
-        company: { name: 'Sua Empresa', slug: 'minha-empresa' },
-        stats: {
-          totalContacts: 0,
-          activeContacts: 0,
-          inactiveContacts: 0,
-          totalCampaigns: 0,
-          scheduledCampaignsCount: 0,
-          messagesSent: 0,
-          messagesDelivered: 0,
-          messagesRead: 0,
-          messagesReplied: 0,
-          messagesFailed: 0,
-          deliveryRate: '0.0%',
-          readRate: '0.0%',
-          responseRate: '0.0%',
-        },
-        recentCampaigns: [],
-        performanceChart: [],
-      });
-    }
 
     const companyId = company.id;
 

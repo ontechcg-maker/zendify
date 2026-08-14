@@ -1,14 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getOrCreateCompany } from '@/lib/company';
 
 export async function GET() {
   try {
-    let company = await prisma.company.findFirst();
-    if (!company) {
-      company = await prisma.company.create({
-        data: { name: 'Minha Empresa', slug: 'minha-empresa' },
-      });
-    }
+    const company = await getOrCreateCompany();
+
 
     const account = await prisma.whatsAppAccount.findFirst({
       where: { companyId: company.id },
@@ -66,12 +63,7 @@ export async function POST(req: NextRequest) {
       autoReplyEnabled = false,
     } = body;
 
-    let company = await prisma.company.findFirst();
-    if (!company) {
-      company = await prisma.company.create({
-        data: { name: 'Minha Empresa', slug: 'minha-empresa' },
-      });
-    }
+    const company = await getOrCreateCompany();
 
     let account = await prisma.whatsAppAccount.findFirst({
       where: { companyId: company.id },

@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getOrCreateCompany } from '@/lib/company';
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const contactId = searchParams.get('contactId');
 
-    const company = await prisma.company.findFirst({ where: { slug: 'minha-empresa' } });
-    if (!company) return NextResponse.json({ error: 'Empresa não encontrada' }, { status: 404 });
+    const company = await getOrCreateCompany();
+
 
     const optOuts = await prisma.optOut.findMany({
       where: { companyId: company.id },

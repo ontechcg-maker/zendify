@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { WhatsAppClient } from '@/lib/whatsapp';
+import { getOrCreateCompany } from '@/lib/company';
 
 export async function POST(req: NextRequest) {
   try {
@@ -11,8 +12,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Nenhum contato fornecido para importação' }, { status: 400 });
     }
 
-    const company = await prisma.company.findFirst({ where: { slug: 'minha-empresa' } });
-    if (!company) return NextResponse.json({ error: 'Empresa não encontrada' }, { status: 404 });
+    const company = await getOrCreateCompany();
+
 
     let importedCount = 0;
     let duplicateCount = 0;

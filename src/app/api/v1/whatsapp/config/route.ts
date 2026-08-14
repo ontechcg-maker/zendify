@@ -1,15 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { EvolutionClient } from '@/lib/evolution';
+import { getOrCreateCompany } from '@/lib/company';
 
 export async function GET() {
   try {
-    let company = await prisma.company.findFirst();
-    if (!company) {
-      company = await prisma.company.create({
-        data: { name: 'Minha Empresa', slug: 'minha-empresa' },
-      });
-    }
+    const company = await getOrCreateCompany();
 
     const account = await prisma.whatsAppAccount.findFirst({
       where: { companyId: company.id },
@@ -37,12 +33,7 @@ export async function POST(req: NextRequest) {
       verifyToken,
     } = body;
 
-    let company = await prisma.company.findFirst();
-    if (!company) {
-      company = await prisma.company.create({
-        data: { name: 'Minha Empresa', slug: 'minha-empresa' },
-      });
-    }
+    const company = await getOrCreateCompany();
 
     // Find existing account for the company if any
     const existingAccount = await prisma.whatsAppAccount.findFirst({
@@ -50,6 +41,11 @@ export async function POST(req: NextRequest) {
     });
 
     const targetId = id || existingAccount?.id || 'default-id';
+
+    // Preserve verifyToken if not explicitly passed
+    const finalVerifyToken = verifyToken !== undefined && verifyToken !== null && verifyToken !== ''
+      ? verifyToken
+      : existingAccount?.verifyToken || null;
 
     // Check Evolution API status if selected
     let connTest: any = { connected: true, message: 'Configurações salvas com sucesso!' };
@@ -74,7 +70,7 @@ export async function POST(req: NextRequest) {
         phoneNumberId: provider === 'EVOLUTION' ? instanceName : phoneNumberId,
         accessToken: provider === 'EVOLUTION' ? apiKey : accessToken,
         webhookUrl,
-        verifyToken,
+        verifyToken: finalVerifyToken,
         status: connTest.connected ? 'CONNECTED' : 'DISCONNECTED',
       },
       create: {
@@ -85,7 +81,7 @@ export async function POST(req: NextRequest) {
         phoneNumberId: provider === 'EVOLUTION' ? instanceName : phoneNumberId,
         accessToken: provider === 'EVOLUTION' ? apiKey : accessToken,
         webhookUrl,
-        verifyToken,
+        verifyToken: finalVerifyToken,
         status: connTest.connected ? 'CONNECTED' : 'DISCONNECTED',
       },
     });
@@ -95,3 +91,4 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
